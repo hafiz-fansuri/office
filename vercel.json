@@ -1,0 +1,18 @@
+{
+    "version": 3,
+    "name": "virtual-office",
+    "description": "OmniTech Engineering Virtual Office GUI",
+    "routes": [
+        {
+            "src": "/(.*)",
+            "headers": {
+                "Cache-Control": "public, max-age=0, must-revalidate"
+            },
+            "continue": true
+        }
+    ],
+    "github": {
+        "enabled": true,
+        "silent": true
+    }
+}
