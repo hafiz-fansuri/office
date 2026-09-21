@@ -1,7 +1,5 @@
 {
-    "version": 3,
-    "name": "virtual-office",
-    "description": "OmniTech Engineering Virtual Office GUI",
+    "version": 2,
     "routes": [
         {
             "src": "/(.*)",
@@ -10,9 +8,5 @@
             },
             "continue": true
         }
-    ],
-    "github": {
-        "enabled": true,
-        "silent": true
-    }
+    ]
 }
