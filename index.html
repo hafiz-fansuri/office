@@ -3,234 +3,330 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Office - OmniTech Engineering</title>
+    <title>Virtual Office — OmniTech Engineering</title>
+    <meta name="description" content="OmniTech Engineering Virtual Office - Dashboard with autonomous avatars">
     <link rel="stylesheet" href="style.css">
+    <link rel="preload" href="script.js" as="script">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
-    <!-- Background with subtle gradient -->
-    <!-- Header: CEO Control Center -->
-    <header class="ceo-header">
-        <div class="ceo-container" id="ceoContainer">
-            <div class="ceo-avatar" id="ceoAvatar">
-                <div class="ceo-glow"></div>
-                <div class="ceo-icon">
-                    <i class="fas fa-chess-king"></i>
+    <div class="app-container">
+        <!-- ===== CEO Header ===== -->
+        <header class="ceo-header">
+            <!-- CEO Avatar + Brand -->
+            <div class="ceo-brand">
+                <div class="ceo-avatar-header" id="ceoAvatarHeader">
+                    <div class="ceo-glow-ring"></div>
+                    <div class="ceo-avatar-inner">
+                        <div class="ceo-icon-inner">
+                            <i class="fas fa-chess-king"></i>
+                        </div>
+                    </div>
+                    <div class="ceo-pulse-dot"></div>
                 </div>
-                <div class="ceo-name">CEO - CORE</div>
-                <div class="ceo-status">Online</div>
-                <div class="ceo-pulse"></div>
+                <div class="ceo-title">
+                    <span style="color: var(--color-text-secondary);">OmniTech</span>
+                    <span class="highlight">Engineering</span>
+                </div>
             </div>
+
             <!-- Request Inbox -->
             <div class="request-inbox">
-                <input type="text" id="requestInput" placeholder="Enter new request or task..." class="request-input">
-                <button id="submitRequest" class="submit-btn">Submit Request</button>
+                <input type="text" id="requestInput" class="request-input"
+                       placeholder="Enter a task for any department...">
+                <button id="submitRequest" class="submit-btn">
+                    <i class="fas fa-paper-plane"></i> Dispatch
+                </button>
             </div>
-        </div>
-        <!-- Department Stats -->
-        <div class="header-stats">
-            <div class="stat-item active-depts" id="activeDeptsCount">4/9 Active</div>
-            <div class="stat-item busy-depts" id="busyDeptsCount">6 Busy</div>
-            <div class="stat-item completed-tasks" id="completedTasksCount">24 Completed</div>
-            <div class="stat-item pending-tasks" id="pendingTasksCount">8 Pending</div>
-        </div>
-    </header>
 
-    <!-- Main Office Floor -->
-    <main class="office-floor">
-        <!-- Planner/Strategist Station (Top Center) -->
-        <div class="department planner-dept" id="plannerDept" data-dept="planner">
-            <div class="dept-desk">
-                <div class="dept-header">
-                    <div class="dept-icon">
-                        <i class="fas fa-project-diagram"></i>
+            <!-- Header Stats -->
+            <div class="header-stats">
+                <div class="stat-chip active">
+                    <i class="fas fa-circle-notch stat-icon"></i>
+                    <span id="activeDeptsCount">4/9 Active</span>
+                </div>
+                <div class="stat-chip busy">
+                    <i class="fas fa-bolt stat-icon"></i>
+                    <span id="busyDeptsCount">6 Busy</span>
+                </div>
+                <div class="stat-chip completed">
+                    <i class="fas fa-check-circle stat-icon"></i>
+                    <span id="completedTasksCount">24 Completed</span>
+                </div>
+                <div class="stat-chip pending">
+                    <i class="fas fa-clock stat-icon"></i>
+                    <span id="pendingTasksCount">8 Pending</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ===== Office Floor ===== -->
+        <main class="office-floor">
+            <!-- Planner/Strategist Station (top center) -->
+            <div class="planner-station">
+                <div class="department-card planner-dept" id="plannerDept" data-dept="planner">
+                    <div class="dept-accent"></div>
+                    <div class="dept-header">
+                        <div class="dept-icon">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <div class="dept-name">Planning & Strategy</div>
+                        <div class="dept-status-indicator" id="plannerStatus"></div>
                     </div>
-                    <div class="dept-name">Planning & Strategy</div>
-                    <div class="dept-status-indicator" id="plannerStatus" data-dept-id="planner"></div>
-                </div>
-                <div class="avatar-canvas-container">
-                    <canvas class="avatar-canvas" id="avatarPlanner" width="100" height="100"></canvas>
-                </div>
-                <div class="dept-task" id="plannerTask">Optimizing workflow...</div>
-                <div class="dept-progress-bar">
-                    <div class="progress-fill" id="plannerProgress" style="width: 65%"></div>
+
+                    <div class="avatar-container">
+                        <div class="avatar-canvas-wrapper idle" id="plannerWrapper">
+                            <div class="ceo-glow-ring" style="animation-duration: 6s;"></div>
+                            <canvas class="avatar-canvas" id="avatarPlanner" width="120" height="120"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="dept-task-info">
+                        <div class="dept-task" id="plannerTask">Optimizing workflow...</div>
+                        <div class="dept-progress-container">
+                            <div class="dept-progress-bar">
+                                <div class="progress-fill" id="plannerProgress" style="width: 65%"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Row 1: Engineering Departments -->
-        <div class="dept-row row-1">
-            <!-- Backend Development -->
-            <div class="department dev-dept" id="backendDept" data-dept="backend">
-                <div class="dept-desk">
+            <!-- Row 1: Backend & Frontend Development -->
+            <div class="dept-row row-1">
+                <!-- Backend Development -->
+                <div class="department-card dev-dept" id="backendDept" data-dept="backend">
+                    <div class="dept-accent"></div>
                     <div class="dept-header">
                         <div class="dept-icon">
                             <i class="fas fa-server"></i>
                         </div>
                         <div class="dept-name">Backend Engineering</div>
-                        <div class="dept-status-indicator" id="backendStatus" data-dept-id="backend"></div>
+                        <div class="dept-status-indicator" id="backendStatus"></div>
                     </div>
-                    <div class="avatar-canvas-container">
-                        <canvas class="avatar-canvas" id="avatarBackend" width="100" height="100"></canvas>
+
+                    <div class="avatar-container">
+                        <div class="avatar-canvas-wrapper idle" id="backendWrapper">
+                            <canvas class="avatar-canvas" id="avatarBackend" width="120" height="120"></canvas>
+                        </div>
                     </div>
-                    <div class="dept-task" id="backendTask">Idle</div>
-                    <div class="dept-progress-bar">
-                        <div class="progress-fill" id="backendProgress" style="width: 0%"></div>
+
+                    <div class="dept-task-info">
+                        <div class="dept-task" id="backendTask">Idle</div>
+                        <div class="dept-progress-container">
+                            <div class="dept-progress-bar">
+                                <div class="progress-fill" id="backendProgress" style="width: 0%"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Frontend Development -->
-            <div class="department dev-dept" id="frontendDept" data-dept="frontend">
-                <div class="dept-desk">
+                <!-- Frontend Development -->
+                <div class="department-card dev-dept" id="frontendDept" data-dept="frontend">
+                    <div class="dept-accent"></div>
                     <div class="dept-header">
                         <div class="dept-icon">
                             <i class="fas fa-palette"></i>
                         </div>
                         <div class="dept-name">Frontend Engineering</div>
-                        <div class="dept-status-indicator" id="frontendStatus" data-dept-id="frontend"></div>
+                        <div class="dept-status-indicator" id="frontendStatus"></div>
                     </div>
-                    <div class="avatar-canvas-container">
-                        <canvas class="avatar-canvas" id="avatarFrontend" width="100" height="100"></canvas>
+
+                    <div class="avatar-container">
+                        <div class="avatar-canvas-wrapper idle" id="frontendWrapper">
+                            <canvas class="avatar-canvas" id="avatarFrontend" width="120" height="120"></canvas>
+                        </div>
                     </div>
-                    <div class="dept-task" id="frontendTask">Idle</div>
-                    <div class="dept-progress-bar">
-                        <div class="progress-fill" id="frontendProgress" style="width: 0%"></div>
+
+                    <div class="dept-task-info">
+                        <div class="dept-task" id="frontendTask">Idle</div>
+                        <div class="dept-progress-container">
+                            <div class="dept-progress-bar">
+                                <div class="progress-fill" id="frontendProgress" style="width: 0%"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Structural Engineering -->
-            <div class="department eng-dept" id="structuralDept" data-dept="structural">
-                <div class="dept-desk">
+                <!-- Structural Engineering -->
+                <div class="department-card eng-dept" id="structuralDept" data-dept="structural">
+                    <div class="dept-accent"></div>
                     <div class="dept-header">
                         <div class="dept-icon">
                             <i class="fas fa-drafting-compass"></i>
                         </div>
                         <div class="dept-name">Structural Engineering</div>
-                        <div class="dept-status-indicator" id="structuralStatus" data-dept-id="structural"></div>
+                        <div class="dept-status-indicator" id="structuralStatus"></div>
                     </div>
-                    <div class="avatar-canvas-container">
-                        <canvas class="avatar-canvas" id="avatarStructural" width="100" height="100"></canvas>
+
+                    <div class="avatar-container">
+                        <div class="avatar-canvas-wrapper idle" id="structuralWrapper">
+                            <canvas class="avatar-canvas" id="avatarStructural" width="120" height="120"></canvas>
+                        </div>
                     </div>
-                    <div class="dept-task" id="structuralTask">Idle</div>
-                    <div class="dept-progress-bar">
-                        <div class="progress-fill" id="structuralProgress" style="width: 0%"></div>
+
+                    <div class="dept-task-info">
+                        <div class="dept-task" id="structuralTask">Idle</div>
+                        <div class="dept-progress-container">
+                            <div class="dept-progress-bar">
+                                <div class="progress-fill" id="structuralProgress" style="width: 0%"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Row 2: Engineering Departments -->
-        <div class="dept-row row-2">
-            <!-- Electrical Engineering -->
-            <div class="department eng-dept" id="electricalDept" data-dept="electrical">
-                <div class="dept-desk">
+            <!-- Row 2: Electrical, Mechanical, Robotics -->
+            <div class="dept-row row-2">
+                <!-- Electrical Engineering -->
+                <div class="department-card eng-dept" id="electricalDept" data-dept="electrical">
+                    <div class="dept-accent"></div>
                     <div class="dept-header">
                         <div class="dept-icon">
                             <i class="fas fa-bolt"></i>
                         </div>
                         <div class="dept-name">Electrical Engineering</div>
-                        <div class="dept-status-indicator" id="electricalStatus" data-dept-id="electrical"></div>
+                        <div class="dept-status-indicator" id="electricalStatus"></div>
                     </div>
-                    <div class="avatar-canvas-container">
-                        <canvas class="avatar-canvas" id="avatarElectrical" width="100" height="100"></canvas>
+
+                    <div class="avatar-container">
+                        <div class="avatar-canvas-wrapper idle" id="electricalWrapper">
+                            <canvas class="avatar-canvas" id="avatarElectrical" width="120" height="120"></canvas>
+                        </div>
                     </div>
-                    <div class="dept-task" id="electricalTask">Idle</div>
-                    <div class="dept-progress-bar">
-                        <div class="progress-fill" id="electricalProgress" style="width: 0%"></div>
+
+                    <div class="dept-task-info">
+                        <div class="dept-task" id="electricalTask">Idle</div>
+                        <div class="dept-progress-container">
+                            <div class="dept-progress-bar">
+                                <div class="progress-fill" id="electricalProgress" style="width: 0%"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Mechanical Engineering -->
-            <div class="department eng-dept" id="mechanicalDept" data-dept="mechanical">
-                <div class="dept-desk">
+                <!-- Mechanical Engineering -->
+                <div class="department-card eng-dept" id="mechanicalDept" data-dept="mechanical">
+                    <div class="dept-accent"></div>
                     <div class="dept-header">
                         <div class="dept-icon">
                             <i class="fas fa-cog"></i>
                         </div>
                         <div class="dept-name">Mechanical Engineering</div>
-                        <div class="dept-status-indicator" id="mechanicalStatus" data-dept-id="mechanical"></div>
+                        <div class="dept-status-indicator" id="mechanicalStatus"></div>
                     </div>
-                    <div class="avatar-canvas-container">
-                        <canvas class="avatar-canvas" id="avatarMechanical" width="100" height="100"></canvas>
+
+                    <div class="avatar-container">
+                        <div class="avatar-canvas-wrapper idle" id="mechanicalWrapper">
+                            <canvas class="avatar-canvas" id="avatarMechanical" width="120" height="120"></canvas>
+                        </div>
                     </div>
-                    <div class="dept-task" id="mechanicalTask">Idle</div>
-                    <div class="dept-progress-bar">
-                        <div class="progress-fill" id="mechanicalProgress" style="width: 0%"></div>
+
+                    <div class="dept-task-info">
+                        <div class="dept-task" id="mechanicalTask">Idle</div>
+                        <div class="dept-progress-container">
+                            <div class="dept-progress-bar">
+                                <div class="progress-fill" id="mechanicalProgress" style="width: 0%"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Robotics Engineering -->
-            <div class="department eng-dept" id="roboticsDept" data-dept="robotics">
-                <div class="dept-desk">
+                <!-- Robotics Engineering -->
+                <div class="department-card eng-dept" id="roboticsDept" data-dept="robotics">
+                    <div class="dept-accent"></div>
                     <div class="dept-header">
                         <div class="dept-icon">
                             <i class="fas fa-robot"></i>
                         </div>
                         <div class="dept-name">Robotics Engineering</div>
-                        <div class="dept-status-indicator" id="roboticsStatus" data-dept-id="robotics"></div>
+                        <div class="dept-status-indicator" id="roboticsStatus"></div>
                     </div>
-                    <div class="avatar-canvas-container">
-                        <canvas class="avatar-canvas" id="avatarRobotics" width="100" height="100"></canvas>
+
+                    <div class="avatar-container">
+                        <div class="avatar-canvas-wrapper idle" id="roboticsWrapper">
+                            <canvas class="avatar-canvas" id="avatarRobotics" width="120" height="120"></canvas>
+                        </div>
                     </div>
-                    <div class="dept-task" id="roboticsTask">Idle</div>
-                    <div class="dept-progress-bar">
-                        <div class="progress-fill" id="roboticsProgress" style="width: 0%"></div>
+
+                    <div class="dept-task-info">
+                        <div class="dept-task" id="roboticsTask">Idle</div>
+                        <div class="dept-progress-container">
+                            <div class="dept-progress-bar">
+                                <div class="progress-fill" id="roboticsProgress" style="width: 0%"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Row 3: AI & Mechatronics -->
-        <div class="dept-row row-3">
-            <!-- AI Research -->
-            <div class="department ai-dept" id="aiDept" data-dept="ai">
-                <div class="dept-desk">
+            <!-- Row 3: AI & Mechatronics -->
+            <div class="dept-row row-3">
+                <!-- AI Research -->
+                <div class="department-card ai-dept" id="aiDept" data-dept="ai">
+                    <div class="dept-accent"></div>
                     <div class="dept-header">
                         <div class="dept-icon">
                             <i class="fas fa-brain"></i>
                         </div>
                         <div class="dept-name">AI Research</div>
-                        <div class="dept-status-indicator" id="aiStatus" data-dept-id="ai"></div>
+                        <div class="dept-status-indicator" id="aiStatus"></div>
                     </div>
-                    <div class="avatar-canvas-container">
-                        <canvas class="avatar-canvas" id="avatarAI" width="100" height="100"></canvas>
+
+                    <div class="avatar-container">
+                        <div class="avatar-canvas-wrapper idle" id="aiWrapper">
+                            <canvas class="avatar-canvas" id="avatarAI" width="120" height="120"></canvas>
+                        </div>
                     </div>
-                    <div class="dept-task" id="aiTask">Idle</div>
-                    <div class="dept-progress-bar">
-                        <div class="progress-fill" id="aiProgress" style="width: 0%"></div>
+
+                    <div class="dept-task-info">
+                        <div class="dept-task" id="aiTask">Idle</div>
+                        <div class="dept-progress-container">
+                            <div class="dept-progress-bar">
+                                <div class="progress-fill" id="aiProgress" style="width: 0%"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Mechatronics Engineering -->
-            <div class="department eng-dept" id="mechatronicsDept" data-dept="mechatronics">
-                <div class="dept-desk">
+                <!-- Mechatronics Engineering -->
+                <div class="department-card eng-dept" id="mechatronicsDept" data-dept="mechatronics">
+                    <div class="dept-accent"></div>
                     <div class="dept-header">
                         <div class="dept-icon">
                             <i class="fas fa-cubes"></i>
                         </div>
                         <div class="dept-name">Mechatronics Engineering</div>
-                        <div class="dept-status-indicator" id="mechatronicsStatus" data-dept-id="mechatronics"></div>
+                        <div class="dept-status-indicator" id="mechatronicsStatus"></div>
                     </div>
-                    <div class="avatar-canvas-container">
-                        <canvas class="avatar-canvas" id="avatarMechatronics" width="100" height="100"></canvas>
+
+                    <div class="avatar-container">
+                        <div class="avatar-canvas-wrapper idle" id="mechatronicsWrapper">
+                            <canvas class="avatar-canvas" id="avatarMechatronics" width="120" height="120"></canvas>
+                        </div>
                     </div>
-                    <div class="dept-task" id="mechatronicsTask">Idle</div>
-                    <div class="dept-progress-bar">
-                        <div class="progress-fill" id="mechatronicsProgress" style="width: 0%"></div>
+
+                    <div class="dept-task-info">
+                        <div class="dept-task" id="mechatronicsTask">Idle</div>
+                        <div class="dept-progress-container">
+                            <div class="dept-progress-bar">
+                                <div class="progress-fill" id="mechatronicsProgress" style="width: 0%"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </main>
+        </main>
 
-    <!-- Request Flow Visualization -->
-    <div class="request-flow" id="requestFlow">
-        <!-- Dynamic request cards will appear here -->
+        <!-- ===== Request Flow Visualization ===== -->
+        <div class="request-flow" id="requestFlow"></div>
+
+        <!-- ===== Floor Grid Canvas ===== -->
+        <div class="floor-grid">
+            <canvas id="floorGridCanvas" width="1920" height="1080"></canvas>
+        </div>
     </div>
 
     <script src="script.js"></script>

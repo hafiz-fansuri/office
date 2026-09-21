@@ -1,6 +1,6 @@
 // ===== Virtual Office Simulation =====
 // OmniTech Engineering Virtual Office
-// Avatars, animations, request routing, autonomous work
+// Professional Dashboard Design System
 
 class VirtualOffice {
     constructor() {
@@ -10,7 +10,8 @@ class VirtualOffice {
         this.pendingTasks = 0;
         this.activeDepts = 0;
         this.isInitialized = false;
-        
+        this.avatarAnimations = {};
+
         this.init();
     }
 
@@ -18,811 +19,882 @@ class VirtualOffice {
         this.setupDepartments();
         this.initAvatars();
         this.setupEventListeners();
+        this.initFloorGrid();
         this.startSimulation();
         this.isInitialized = true;
-        
-        console.log('Virtual Office initialized - OmniTech Engineering');
+        console.log('[Virtual Office] OmniTech Engineering — System Initialized');
     }
 
     setupDepartments() {
         const deptConfigs = {
             planner: {
                 name: 'Planning & Strategy',
-                color: '#ff9800',
-                workTypes: ['strategy', 'planning', 'optimization'],
-                workSpeed: 0.015,
-                icon: 'fas fa-project-diagram'
+                colorKey: 'strategist',
+                workTypes: ['strategy', 'planning', 'optimization', 'workflow', 'resource'],
+                workSpeed: 0.015
             },
             backend: {
                 name: 'Backend Engineering',
-                color: '#00c8ff',
-                workTypes: ['api', 'database', 'server', 'backend'],
-                workSpeed: 0.02,
-                icon: 'fas fa-server'
+                colorKey: 'developer',
+                workTypes: ['backend', 'api', 'database', 'server', 'serverless'],
+                workSpeed: 0.02
             },
             frontend: {
                 name: 'Frontend Engineering',
-                color: '#00c8ff',
-                workTypes: ['ui', 'ux', 'frontend', 'design', 'react', 'dashboard', 'css', 'html', 'javascript', 'angular', 'vue', 'responsive', 'web-app'],
-                workSpeed: 0.025,
-                icon: 'fas fa-palette'
+                colorKey: 'developer',
+                workTypes: ['frontend', 'react', 'vue', 'angular', 'dashboard', 'ui', 'css', 'html'],
+                workSpeed: 0.025
             },
             structural: {
                 name: 'Structural Engineering',
-                color: '#4caf50',
-                workTypes: ['structural', 'building', 'bridge', 'blueprint'],
-                workSpeed: 0.018,
-                icon: 'fas fa-drafting-compass'
+                colorKey: 'engineering',
+                workTypes: ['structural', 'building', 'bridge', 'blueprint', 'framework'],
+                workSpeed: 0.018
             },
             electrical: {
                 name: 'Electrical Engineering',
-                color: '#4caf50',
-                workTypes: ['electrical', 'wiring', 'circuit', 'circuits', 'power', 'panel', 'electronics', 'voltage'],
-                workSpeed: 0.02,
-                icon: 'fas fa-bolt'
+                colorKey: 'engineering',
+                workTypes: ['electrical', 'wiring', 'circuit', 'circuits', 'power', 'electronics', 'voltage'],
+                workSpeed: 0.02
             },
             mechanical: {
                 name: 'Mechanical Engineering',
-                color: '#4caf50',
-                workTypes: ['mechanical', 'gear', 'engine', 'machine'],
-                workSpeed: 0.018,
-                icon: 'fas fa-cog'
+                colorKey: 'engineering',
+                workTypes: ['mechanical', 'gear', 'engine', 'machine', 'assembly'],
+                workSpeed: 0.018
             },
             robotics: {
                 name: 'Robotics Engineering',
-                color: '#4caf50',
-                workTypes: ['robot', 'robotics', 'arm', 'automation'],
-                workSpeed: 0.015,
-                icon: 'fas fa-robot'
+                colorKey: 'engineering',
+                workTypes: ['robot', 'robotics', 'arm', 'automation', 'kinematics'],
+                workSpeed: 0.015
             },
             ai: {
                 name: 'AI Research',
-                color: '#9c64ff',
-                workTypes: ['ai', 'ml', 'neural', 'model', 'training', 'ai-model', 'machine-learning', 'deep-learning'],
-                workSpeed: 0.012,
-                icon: 'fas fa-brain'
+                colorKey: 'ai',
+                workTypes: ['ai', 'ml', 'neural', 'model', 'training', 'machine-learning', 'deep-learning'],
+                workSpeed: 0.012
             },
             mechatronics: {
                 name: 'Mechatronics Engineering',
-                color: '#4caf50',
+                colorKey: 'engineering',
                 workTypes: ['mechatronics', 'embedded', 'integration', 'firmware', 'plc', 'actuator'],
-                workSpeed: 0.016,
-                icon: 'fas fa-cubes'
+                workSpeed: 0.016
             }
         };
+
+        const deptPriority = ['ai', 'robotics', 'mechatronics', 'structural', 'electrical',
+                              'mechanical', 'backend', 'frontend', 'planner'];
 
         Object.entries(deptConfigs).forEach(([id, config]) => {
             this.departments[id] = {
                 id,
                 name: config.name,
-                color: config.color,
+                colorKey: config.colorKey,
                 workTypes: config.workTypes,
                 workSpeed: config.workSpeed,
-                icon: config.icon,
-                status: 'idle', // idle, busy, working
+                status: 'idle',
                 currentTask: 'Idle',
                 progress: 0,
                 taskTimer: null,
-                avatarRenderer: null
+                avatarRenderer: null,
+                canvas: null,
+                wrapper: null,
+                statusEl: null,
+                taskEl: null,
+                progressEl: null
             };
         });
+        this.deptPriority = deptPriority;
     }
 
     initAvatars() {
-        // Create avatar renderers for each department
-        const avatarConfigs = {
-            planner: this.createPlannerAvatar.bind(this),
-            backend: this.createBackendAvatar.bind(this),
-            frontend: this.createFrontendAvatar.bind(this),
-            structural: this.createStructuralAvatar.bind(this),
-            electrical: this.createElectricalAvatar.bind(this),
-            mechanical: this.createMechanicalAvatar.bind(this),
-            robotics: this.createRoboticsAvatar.bind(this),
-            ai: this.createAIAvatar.bind(this),
-            mechatronics: this.createMechatronicsAvatar.bind(this)
+        const avatarMap = {
+            planner: 'Planner', backend: 'Backend', frontend: 'Frontend',
+            structural: 'Structural', electrical: 'Electrical',
+            mechanical: 'Mechanical', robotics: 'Robotics',
+            ai: 'AI', mechatronics: 'Mechatronics'
         };
 
-        Object.entries(avatarConfigs).forEach(([deptId, renderer]) => {
-            const canvas = document.getElementById(`avatar${this.capitalize(deptId)}`);
-            if (canvas) {
+        Object.entries(avatarMap).forEach(([deptId, suffix]) => {
+            const canvas = document.getElementById(`avatar${suffix}`);
+            const wrapper = document.getElementById(`${deptId}Wrapper`);
+            const statusEl = document.getElementById(`${deptId}Status`);
+            const taskEl = document.getElementById(`${deptId}Task`);
+            const progressEl = document.getElementById(`${deptId}Progress`);
+
+            if (canvas && this.departments[deptId]) {
                 const ctx = canvas.getContext('2d');
-                const rendererInstance = renderer(ctx, canvas.width, canvas.height);
-                this.departments[deptId].avatarRenderer = rendererInstance;
+                this.departments[deptId].canvas = canvas;
+                this.departments[deptId].wrapper = wrapper;
+                this.departments[deptId].statusEl = statusEl;
+                this.departments[deptId].taskEl = taskEl;
+                this.departments[deptId].progressEl = progressEl;
+                
+                this.setupDeptElements(deptId);
+                this.initAvatarAnimation(deptId, ctx, canvas.width, canvas.height);
             }
         });
 
-        // CEO Avatar
-        this.initCEOAvatar();
-        
-        // Start animation loops
         this.animateAllAvatars();
     }
 
-    initCEOAvatar() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 80;
-        canvas.height = 80;
-        canvas.id = 'ceoCanvas';
-        
-        let angle = 0;
-        const animateCEO = () => {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw spinning crown
-            ctx.save();
-            ctx.translate(40, 35);
-            ctx.rotate(angle * 0.02);
-            ctx.fillStyle = '#00ccff';
-            ctx.font = '20px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('♔', 0, 0);
-            ctx.restore();
-            
-            // Draw CEO body
-            ctx.fillStyle = '#00aaff';
-            ctx.beginPath();
-            ctx.arc(35, 55, 8, 0, Math.PI * 2);
-            ctx.fill();
-            
-            angle += 0.5;
-            requestAnimationFrame(animateCEO);
+    setupDeptElements(deptId) {
+        const dept = this.departments[deptId];
+        const colorMap = {
+            developer: '#00c8ff',
+            engineering: '#4ade80',
+            ai: '#a883ff',
+            strategist: '#fb9254'
         };
-        animateCEO();
-        
-        const ceoIconContainer = document.querySelector('.ceo-icon');
-        if (ceoIconContainer) {
-            ceoIconContainer.innerHTML = '';
-            ceoIconContainer.appendChild(canvas);
+        const deptColor = colorMap[dept.colorKey] || '#00c8ff';
+        const borderColor = dept.wrapper;
+        const deptCard = document.querySelector(`[data-dept="${deptId}"]`);
+        if (deptCard) {
+            deptCard.style.setProperty('--dept-color', deptColor);
         }
     }
 
-    // ===== Avatar Renderers =====
-    
-    createPlannerAvatar(ctx, w, h) {
-        let t = 0;
-        const render = () => {
-            ctx.clearRect(0, 0, w, h);
-            
-            // Draw clipboard with chart
-            ctx.fillStyle = '#d7ccc8';
-            ctx.fillRect(20, 10, 60, 80);
-            ctx.strokeStyle = '#8d6e68';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(20, 10, 60, 80);
-            
-            // Clipboard clip
-            ctx.fillStyle = '#4caf50';
-            ctx.beginPath();
-            ctx.arc(40, 85, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(60, 85, 5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Draw strategy chart
-            ctx.strokeStyle = '#ff9800';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            for (let i = 0; i < 5; i++) {
-                const x = 30 + i * 10;
-                const y = 25 + Math.sin(t * 0.05 + i) * 5;
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-            
-            // Draw optimization gears
-            ctx.save();
-            ctx.translate(70, 35);
-            ctx.rotate(t * 0.03);
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.arc(0, 0, 8, 0, Math.PI * 2);
-            ctx.stroke();
-            for (let i = 0; i < 6; i++) {
-                ctx.beginPath();
-                ctx.moveTo(0, -10);
-                ctx.lineTo(0, -8);
-                ctx.rotate(Math.PI / 3);
-            }
-            ctx.stroke();
-            ctx.restore();
-            
-            t += 1;
-            requestAnimationFrame(render);
+    initAvatarAnimation(deptId, ctx, w, h) {
+        const renderers = {
+            planner: () => this.renderPlannerAvatar(ctx, w, h),
+            backend: () => this.renderBackendAvatar(ctx, w, h),
+            frontend: () => this.renderFrontendAvatar(ctx, w, h),
+            structural: () => this.renderStructuralAvatar(ctx, w, h),
+            electrical: () => this.renderElectricalAvatar(ctx, w, h),
+            mechanical: () => this.renderMechanicalAvatar(ctx, w, h),
+            robotics: () => this.renderRoboticsAvatar(ctx, w, h),
+            ai: () => this.renderAIAvatar(ctx, w, h),
+            mechatronics: () => this.renderMechatronicsAvatar(ctx, w, h)
         };
-        render();
-    }
 
-    createBackendAvatar(ctx, w, h) {
-        let t = 0;
-        const render = () => {
-            ctx.clearRect(0, 0, w, h);
-            
-            // Draw laptop
-            ctx.fillStyle = '#2d2d2d';
-            ctx.fillRect(25, 30, 60, 40);
-            ctx.strokeStyle = '#1a1a1a';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(25, 30, 60, 40);
-            
-            // Screen
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(28, 33, 54, 32);
-            
-            // Code lines on screen
-            const codeLines = [
-                { x: 32, y: 40, len: 40, color: '#4ade80' },
-                { x: 32, y: 48, len: 35, color: '#60a5fa' },
-                { x: 32, y: 56, len: 45, color: '#fbbf24' },
-                { x: 32, y: 64, len: 30, color: '#f87171' }
-            ];
-            
-            codeLines.forEach((line, i) => {
-                ctx.fillStyle = line.color;
-                ctx.fillRect(line.x + Math.sin(t * 0.1 + i) * 2, line.y, line.len, 2);
-            });
-            
-            // Keyboard
-            ctx.fillStyle = '#4a4a4a';
-            ctx.fillRect(25, 70, 60, 8);
-            ctx.fillStyle = '#333';
-            for (let i = 0; i < 8; i++) {
-                ctx.fillRect(27 + i * 7, 72, 5, 4);
-            }
-            
-            // Data flow animation
-            ctx.fillStyle = '#00c8ff';
-            const dataX = 28 + Math.cos(t * 0.08) * 25;
-            const dataY = 35 + Math.sin(t * 0.08) * 14;
-            ctx.beginPath();
-            ctx.arc(dataX, dataY, 2, 0, Math.PI * 2);
-            ctx.fill();
-            
-            t += 1;
-            requestAnimationFrame(render);
-        };
-        render();
-    }
-
-    createFrontendAvatar(ctx, w, h) {
-        let t = 0;
-        const render = () => {
-            ctx.clearRect(0, 0, w, h);
-            
-            // Draw tablet/mobile
-            ctx.fillStyle = '#9333ea';
-            ctx.fillRect(30, 20, 45, 65);
-            ctx.strokeStyle = '#7e22ce';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(30, 20, 45, 65);
-            
-            // Screen
-            ctx.fillStyle = '#1e1e2d';
-            ctx.fillRect(33, 24, 39, 56);
-            
-            // Draw UI elements on screen - animated palette
-            const colors = ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#a78bfa'];
-            colors.forEach((color, i) => {
-                ctx.fillStyle = color;
-                const y = 32 + i * 10 + Math.sin(t * 0.1 + i) * 3;
-                ctx.beginPath();
-                ctx.arc(45, y, 4, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            
-            // Draw a button with hover effect
-            ctx.fillStyle = '#2563eb';
-            ctx.fillRect(45, 68, 10, 6);
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '6px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('Btn', 50, 73);
-            
-            // Color brush animation
-            ctx.save();
-            ctx.translate(55, 55);
-            ctx.rotate(Math.sin(t * 0.05) * 0.3);
-            ctx.fillStyle = '#ec4899';
-            ctx.fillRect(-2, -10, 4, 20);
-            ctx.restore();
-            
-            t += 1;
-            requestAnimationFrame(render);
-        };
-        render();
-    }
-
-    createStructuralAvatar(ctx, w, h) {
-        let t = 0;
-        const render = () => {
-            ctx.clearRect(0, 0, w, h);
-            
-            // Draw blueprint
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(15, 10, 70, 80);
-            ctx.strokeStyle = '#334155';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(15, 10, 70, 80);
-            
-            // Draw grid lines on blueprint
-            ctx.strokeStyle = '#1e293b';
-            for (let i = 0; i < 6; i++) {
-                ctx.beginPath();
-                ctx.moveTo(25 + i * 12, 20);
-                ctx.lineTo(25 + i * 12, 80);
-                ctx.stroke();
-            }
-            for (let i = 0; i < 5; i++) {
-                ctx.beginPath();
-                ctx.moveTo(15, 25 + i * 13);
-                ctx.lineTo(85, 25 + i * 13);
-                ctx.stroke();
-            }
-            
-            // Draw building structure
-            ctx.strokeStyle = '#475569';
-            ctx.lineWidth = 2;
-            
-            // Building outline
-            ctx.beginPath();
-            ctx.moveTo(25, 75);
-            ctx.lineTo(50, 30);
-            ctx.lineTo(75, 75);
-            ctx.lineTo(75, 78);
-            ctx.lineTo(25, 78);
-            ctx.closePath();
-            ctx.stroke();
-            
-            // Building supports
-            ctx.beginPath();
-            ctx.moveTo(35, 45);
-            ctx.lineTo(35, 75);
-            ctx.lineTo(65, 75);
-            ctx.lineTo(65, 45);
-            ctx.stroke();
-            
-            // Draw a beam being placed
-            ctx.fillStyle = '#475569';
-            ctx.save();
-            ctx.translate(50, 25);
-            ctx.rotate(Math.sin(t * 0.05) * 0.1);
-            ctx.fillRect(-20, -3, 40, 6);
-            ctx.restore();
-            
-            // Drafting compass animation
-            ctx.save();
-            ctx.translate(70, 20);
-            ctx.rotate(t * 0.02);
-            ctx.strokeStyle = '#94a3b8';
-            ctx.beginPath();
-            ctx.arc(0, 0, 8, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(10, 0);
-            ctx.rotate(t * 0.05);
-            ctx.moveTo(0, 0);
-            ctx.lineTo(8, -8);
-            ctx.stroke();
-            ctx.restore();
-            
-            t += 1;
-            requestAnimationFrame(render);
-        };
-        render();
-    }
-
-    createElectricalAvatar(ctx, w, h) {
-        let t = 0;
-        const render = () => {
-            ctx.clearRect(0, 0, w, h);
-            
-            // Draw circuit board
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(20, 15, 60, 70);
-            ctx.strokeStyle = '#0ea5e9';
-            ctx.lineWidth = 1;
-            
-            // Circuit paths
-            ctx.beginPath();
-            ctx.moveTo(25, 25);
-            ctx.lineTo(75, 25);
-            ctx.lineTo(75, 35);
-            ctx.lineTo(45, 35);
-            ctx.lineTo(45, 55);
-            ctx.lineTo(75, 55);
-            ctx.lineTo(75, 65);
-            ctx.stroke();
-            
-            // Circuit traces (animated current)
-            const traceCount = 4;
-            for (let i = 0; i < traceCount; i++) {
-                const phase = (t * 0.1 + i * 1.5);
-                const brightness = Math.sin(phase) * 0.5 + 0.5;
-                ctx.strokeStyle = `rgba(96, 165, 250, ${brightness})`;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                const startX = 25 + Math.sin(phase) * 3;
-                const startY = 30 + i * 10;
-                ctx.beginPath();
-                ctx.arc(startX, startY, 2, 0, Math.PI * 2);
-                ctx.stroke();
-            }
-            
-            // Electronic components
-            // Resistors (brown)
-            ctx.fillStyle = '#78350f';
-            ctx.fillRect(30, 40, 12, 5);
-            ctx.fillRect(60, 40, 12, 5);
-            
-            // Capacitors (blue)
-            ctx.fillStyle = '#1e40af';
-            ctx.fillRect(45, 50, 10, 5);
-            
-            // LED (pulsing)
-            ctx.fillStyle = Math.sin(t * 0.1) > 0 ? '#f59e0b' : '#92400e';
-            ctx.beginPath();
-            ctx.arc(50, 30, 3, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Wire animation
-            ctx.strokeStyle = '#fbbf24';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            const wireX = 40 + Math.cos(t * 0.08) * 10;
-            ctx.moveTo(wireX, 60);
-            ctx.lineTo(wireX, 68);
-            ctx.stroke();
-            
-            t += 1;
-            requestAnimationFrame(render);
-        };
-        render();
-    }
-
-    createMechanicalAvatar(ctx, w, h) {
-        let t = 0;
-        const render = () => {
-            ctx.clearRect(0, 0, w, h);
-            
-            // Draw gears
-            const gearCount = 3;
-            const gearData = [
-                { x: 30, y: 35, r: 12, teeth: 12, speed: 1 },
-                { x: 55, y: 45, r: 10, teeth: 10, speed: -1.2 },
-                { x: 75, y: 40, r: 8, teeth: 8, speed: 1.5 },
-            ];
-            
-            gearData.forEach((gear, i) => {
-                ctx.save();
-                ctx.translate(gear.x, gear.y);
-                ctx.rotate(t * 0.02 * gear.speed);
-                
-                // Gear teeth
-                ctx.fillStyle = '#94a3b8';
-                for (let j = 0; j < gear.teeth; j++) {
-                    ctx.save();
-                    ctx.rotate((j / gear.teeth) * Math.PI * 2);
-                    ctx.beginPath();
-                    ctx.moveTo(0, -gear.r - 2);
-                    ctx.lineTo(0, -gear.r - 6);
-                    ctx.lineTo(0, -gear.r - 8);
-                    ctx.arc(0, -gear.r - 7, 1.5, 0, Math.PI);
-                    ctx.fill();
-                    ctx.restore();
-                }
-                
-                // Gear center
-                ctx.fillStyle = '#64748b';
-                ctx.beginPath();
-                ctx.arc(0, 0, gear.r * 0.4, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Gear inner details
-                ctx.strokeStyle = '#475569';
-                ctx.lineWidth = 1;
-                for (let j = 0; j < gear.teeth; j++) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.lineTo(gear.r * 0.6, 0);
-                    ctx.rotate((j / gear.teeth) * Math.PI * 2);
-                    ctx.stroke();
-                }
-                ctx.restore();
-            });
-            
-            // Draw wrench animation
-            ctx.save();
-            ctx.translate(78, 55);
-            ctx.rotate(Math.sin(t * 0.05) * 0.5);
-            ctx.fillStyle = '#d4d4d4';
-            ctx.fillRect(-3, -10, 6, 20);
-            ctx.fillRect(-8, -3, 16, 6);
-            ctx.restore();
-            
-            // Draw machine base
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(15, 65, 70, 8);
-            
-            t += 1;
-            requestAnimationFrame(render);
-        };
-        render();
-    }
-
-    createRoboticsAvatar(ctx, w, h) {
-        let t = 0;
-        const render = () => {
-            ctx.clearRect(0, 0, w, h);
-            
-            // Draw work surface
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(10, 60, 80, 5);
-            
-            // Robot arm base
-            ctx.fillStyle = '#64748b';
-            ctx.beginPath();
-            ctx.arc(50, 58, 5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Robot arm segments
-            const armAngle1 = Math.sin(t * 0.04) * 0.5;
-            const armAngle2 = Math.sin(t * 0.03 + 0.5) * 0.8;
-            const armAngle3 = Math.sin(t * 0.05 - 0.3) * 1.0;
-            
-            ctx.save();
-            ctx.translate(50, 58);
-            
-            // Segment 1
-            ctx.strokeStyle = '#94a3b8';
-            ctx.lineWidth = 6;
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(0, 18);
-            ctx.stroke();
-            
-            // Joint 1
-            ctx.fillStyle = '#475569';
-            ctx.beginPath();
-            ctx.arc(0, 18, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Segment 2
-            ctx.translate(0, 18);
-            ctx.rotate(armAngle1);
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(0, 20);
-            ctx.stroke();
-            
-            // Joint 2
-            ctx.fillStyle = '#475569';
-            ctx.beginPath();
-            ctx.arc(0, 20, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Segment 3
-            ctx.translate(0, 20);
-            ctx.rotate(armAngle2);
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(0, 18);
-            ctx.stroke();
-            
-            // Gripper
-            ctx.translate(0, 18);
-            ctx.rotate(armAngle3);
-            const gripperOpen = Math.abs(Math.sin(t * 0.03)) * 4;
-            ctx.fillStyle = '#64748b';
-            ctx.fillRect(-6, 0, 12, 4);
-            ctx.fillRect(-6, 0, 4, 8);
-            ctx.fillRect(2, 0, 4, 8);
-            
-            ctx.restore();
-            
-            // Robot body
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(35, 30, 30, 28);
-            ctx.strokeStyle = '#334155';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(35, 30, 30, 28);
-            
-            // Robot face
-            ctx.fillStyle = '#06b6d4';
-            ctx.beginPath();
-            ctx.arc(42, 40, 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(58, 40, 2, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Robot mouth (LED display)
-            ctx.fillStyle = '#10b981';
-            ctx.fillRect(40, 45, 20, 6);
-            ctx.font = '5px Arial';
-            ctx.fillStyle = '#0f172a';
-            ctx.textAlign = 'center';
-            ctx.fillText('AI', 50, 49);
-            
-            t += 1;
-            requestAnimationFrame(render);
-        };
-        render();
-    }
-
-    createAIAvatar(ctx, w, h) {
-        let t = 0;
-        const nodeCount = 8;
-        const nodes = [];
-        for (let i = 0; i < nodeCount; i++) {
-            nodes.push({
-                x: 30 + Math.cos(i / nodeCount * Math.PI * 2) * 25,
-                y: 40 + Math.sin(i / nodeCount * Math.PI * 2) * 25,
-                delay: i * 0.3
-            });
+        const renderer = renderers[deptId];
+        if (renderer) {
+            let frame = 0;
+            const animate = () => {
+                frame += 1;
+                renderer(frame);
+                this.avatarAnimations[deptId] = requestAnimationFrame(animate);
+            };
+            animate();
         }
-        
-        const render = () => {
-            ctx.clearRect(0, 0, w, h);
-            
-            // Draw connections between nodes
-            ctx.strokeStyle = '#a78bfa';
-            ctx.lineWidth = 1;
-            nodes.forEach((node, i) => {
-                const target = nodes[(i + 1) % nodeCount];
-                ctx.beginPath();
-                ctx.moveTo(node.x, node.y);
-                ctx.lineTo(target.x, target.y);
-                ctx.stroke();
-            });
-            
-            // Draw data pulses along connections
-            nodes.forEach((node, i) => {
-                const target = nodes[(i + 1) % nodeCount];
-                const progress = (Math.sin(t * 0.05 + node.delay) + 1) / 2;
-                const px = node.x + (target.x - node.x) * progress;
-                const py = node.y + (target.y - node.y) * progress;
-                
-                ctx.fillStyle = '#a78bfa';
-                ctx.beginPath();
-                ctx.arc(px, py, 2, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            
-            // Draw neurons/nodes
-            nodes.forEach(node => {
-                ctx.fillStyle = '#8b5cf6';
-                ctx.beginPath();
-                ctx.arc(node.x, node.y, 4, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Activity pulse
-                const pulseSize = 3 + Math.sin(t * 0.05 - node.delay) * 2;
-                ctx.strokeStyle = '#c4b5ff';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.arc(node.x, node.y, pulseSize, 0, Math.PI * 2);
-                ctx.stroke();
-            });
-            
-            // Draw the central processing unit
-            ctx.fillStyle = '#1e1b2e';
-            ctx.fillRect(25, 48, 50, 25);
-            ctx.strokeStyle = '#6d28d9';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(25, 48, 50, 25);
-            
-            // CPU activity bars
-            const barCount = 6;
-            for (let i = 0; i < barCount; i++) {
-                const barHeight = Math.abs(Math.sin(t * 0.05 - i * 0.5)) * 18;
-                ctx.fillStyle = i % 2 === 0 ? '#8b5cf6' : '#a78bfa';
-                ctx.fillRect(28 + i * 7, 60 - barHeight, 5, barHeight);
-            }
-            
-            t += 1;
-            requestAnimationFrame(render);
-        };
-        render();
-    }
-
-    createMechatronicsAvatar(ctx, w, h) {
-        let t = 0;
-        const render = () => {
-            ctx.clearRect(0, 0, w, h);
-            
-            // Draw combined mechanical + electrical system
-            // Base platform
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(15, 70, 70, 5);
-            
-            // Mechanical arm + sensor
-            ctx.save();
-            ctx.translate(35, 65);
-            
-            // Rotating arm
-            ctx.rotate(Math.sin(t * 0.04) * 0.5);
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillRect(-2, -15, 4, 15);
-            
-            // Joint
-            ctx.fillStyle = '#475569';
-            ctx.beginPath();
-            ctx.arc(0, -15, 3, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Sensor at end
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(-5, -22, 10, 8);
-            ctx.strokeStyle = '#0ea5e9';
-            ctx.strokeRect(-5, -22, 10, 8);
-            
-            // Sensor light
-            ctx.fillStyle = Math.sin(t * 0.1) > 0 ? '#06b6d4' : '#0ea5e9';
-            ctx.beginPath();
-            ctx.arc(0, -18, 2, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.restore();
-            
-            // Circuit traces on base
-            ctx.strokeStyle = '#0ea5e9';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(20, 65);
-            ctx.lineTo(50, 65);
-            ctx.lineTo(50, 70);
-            ctx.stroke();
-            
-            // Data flow dots
-            for (let i = 0; i < 5; i++) {
-                const progress = (t * 0.05 + i * 0.5) % 3;
-                if (progress < 1) {
-                    ctx.fillStyle = '#38bdf8';
-                    const x = 20 + (progress / 1) * 30;
-                    ctx.beginPath();
-                    ctx.arc(x, 65, 1.5, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-            
-            // Microcontroller
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(60, 55, 22, 15);
-            ctx.strokeStyle = '#0ea5e9';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(60, 55, 22, 15);
-            ctx.font = '5px Arial';
-            ctx.fillStyle = '#0ea5e9';
-            ctx.textAlign = 'center';
-            ctx.fillText('MCU', 71, 63);
-            
-            // Pin dots
-            ctx.fillStyle = '#d4d4d4';
-            for (let i = 0; i < 8; i++) {
-                ctx.beginPath();
-                ctx.arc(64 + i % 2 * 16, 58 + Math.floor(i / 2) * 4, 1, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            t += 1;
-            requestAnimationFrame(render);
-        };
-        render();
     }
 
     animateAllAvatars() {
-        // Animation loops are already started within each avatar renderer
-        // This method can be used for any global animation coordination
+        // Animation loops are initiated in initAvatarAnimation
+        // This method exists for future global animation coordination
     }
+
+    initFloorGrid() {
+        const canvas = document.getElementById('floorGridCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let t = 0;
+
+        const animate = () => {
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // Draw grid lines
+            ctx.strokeStyle = 'rgba(40, 120, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < w; x += 32) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            for (let y = 0; y < h; y += 32) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            // Animated grid nodes
+            ctx.fillStyle = 'rgba(0, 200, 255, 0.15)';
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 137 % w);
+                const y = (i * 73 % h);
+                const pulse = Math.sin(t * 0.02 + i * 0.3) * 0.5 + 0.5;
+                const size = 1 + pulse * 1.5;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            t += 1;
+            requestAnimationFrame(animate);
+        };
+        animate();
+    }
+
+    /* ===== AVATAR RENDERERS ===== */
+
+    renderPlannerAvatar(ctx, w, h, frame = 0) {
+        ctx.clearRect(0, 0, w, h);
+        const t = frame;
+
+        // Draw clipboard
+        ctx.fillStyle = '#2d2d38';
+        ctx.fillRect(25, 10, 65, 85);
+        ctx.strokeStyle = '#4a4a5a';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(25, 10, 65, 85);
+
+        // Clipboard clip
+        ctx.fillStyle = '#4ade80';
+        ctx.beginPath();
+        ctx.arc(40, 88, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(62, 88, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Strategy chart on clipboard
+        ctx.strokeStyle = '#fb9254';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+            const x = 33 + i * 8;
+            const y = 25 + Math.sin(t * 0.06 + i) * 5;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Optimization gear
+        ctx.save();
+        ctx.translate(72, 40);
+        ctx.rotate(t * 0.03);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+        ctx.stroke();
+        for (let i = 0; i < 6; i++) {
+            ctx.beginPath();
+            ctx.moveTo(0, -10);
+            ctx.lineTo(0, -8);
+            ctx.rotate(Math.PI / 3);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Drawing hand
+        ctx.save();
+        ctx.translate(58, 60);
+        ctx.rotate(Math.sin(t * 0.05) * 0.3);
+        ctx.strokeStyle = '#d4b483';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(12, 5);
+        ctx.stroke();
+        ctx.fillStyle = '#d4b483';
+        ctx.beginPath();
+        ctx.arc(14, 6, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    renderBackendAvatar(ctx, w, h, frame = 0) {
+        ctx.clearRect(0, 0, w, h);
+        const t = frame;
+
+        // Draw laptop
+        ctx.fillStyle = '#2d2d35';
+        ctx.fillRect(25, 40, 62, 42);
+        ctx.strokeStyle = '#1a1a1f';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(25, 40, 62, 42);
+
+        // Screen
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(28, 44, 56, 34);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(28, 44, 56, 34);
+
+        // Code lines on screen
+        const codeLines = [
+            { y: 52, color: '#4ade80', prefix: 'const ' },
+            { y: 59, color: '#60a5fa', prefix: 'async ' },
+            { y: 66, color: '#fbbf24', prefix: 'await ' },
+            { y: 73, color: '#f87171', prefix: 'throw ' }
+        ];
+        codeLines.forEach((line, i) => {
+            ctx.fillStyle = line.color;
+            ctx.font = '6px monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(line.prefix, 32, line.y);
+        });
+
+        // Data flow particles
+        ctx.fillStyle = '#00c8ff';
+        const dataX = 30 + Math.cos(t * 0.08) * 20;
+        const dataY = 47 + Math.sin(t * 0.08) * 8;
+        ctx.beginPath();
+        ctx.arc(dataX, dataY, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Keyboard
+        ctx.fillStyle = '#4a4a55';
+        ctx.fillRect(28, 82, 56, 7);
+        ctx.strokeStyle = '#333';
+        for (let i = 0; i < 8; i++) {
+            ctx.beginPath();
+            ctx.moveTo(30 + i * 7, 84);
+            ctx.lineTo(30 + i * 7, 86);
+            ctx.stroke();
+        }
+
+        // Server rack in background
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(15, 25, 8, 12);
+        ctx.fillStyle = '#00c8ff';
+        for (let i = 0; i < 3; i++) {
+            ctx.fillRect(16, 29 + i * 3, 6, 1.5);
+        }
+    }
+
+    renderFrontendAvatar(ctx, w, h, frame = 0) {
+        ctx.clearRect(0, 0, w, h);
+        const t = frame;
+
+        // Draw tablet
+        ctx.fillStyle = '#1e3a8a';
+        ctx.fillRect(35, 15, 50, 75);
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(35, 15, 50, 75);
+
+        // Screen
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(38, 20, 44, 62);
+
+        // Color palette swatches
+        const colors = ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#a78bfa', '#ec4899'];
+        colors.forEach((color, i) => {
+            ctx.fillStyle = color;
+            const y = 28 + i * 8 + Math.sin(t * 0.1 + i) * 3;
+            ctx.beginPath();
+            ctx.arc(50, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // UI button with hover
+        ctx.fillStyle = '#2563eb';
+        ctx.fillRect(55, 65, 10, 6);
+        ctx.strokeStyle = '#1e40af';
+        ctx.strokeRect(55, 65, 10, 6);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '5px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Btn', 60, 69);
+
+        // Cursor/mouse pointer
+        ctx.save();
+        ctx.translate(62, 35);
+        ctx.rotate(t * 0.02);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(12, 0);
+        ctx.lineTo(8, 10);
+        ctx.lineTo(0, 8);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    renderStructuralAvatar(ctx, w, h, frame = 0) {
+        ctx.clearRect(0, 0, w, h);
+        const t = frame;
+
+        // Draw blueprint
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(20, 10, 72, 85);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(20, 10, 72, 85);
+
+        // Grid lines
+        ctx.strokeStyle = '#1e293b';
+        for (let i = 0; i < 6; i++) {
+            ctx.beginPath();
+            ctx.moveTo(28 + i * 11, 20);
+            ctx.lineTo(28 + i * 11, 88);
+            ctx.stroke();
+        }
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.moveTo(20, 25 + i * 13);
+            ctx.lineTo(92, 25 + i * 13);
+            ctx.stroke();
+        }
+
+        // Building structure
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(30, 75);
+        ctx.lineTo(48, 35);
+        ctx.lineTo(66, 75);
+        ctx.lineTo(66, 78);
+        ctx.lineTo(30, 78);
+        ctx.closePath();
+        ctx.stroke();
+
+        // Building supports
+        ctx.beginPath();
+        ctx.moveTo(40, 48);
+        ctx.lineTo(40, 75);
+        ctx.lineTo(56, 75);
+        ctx.lineTo(56, 48);
+        ctx.stroke();
+
+        // Beam being placed
+        ctx.fillStyle = '#475569';
+        ctx.save();
+        ctx.translate(48, 33);
+        ctx.rotate(Math.sin(t * 0.05) * 0.15);
+        ctx.fillRect(-15, -2, 30, 4);
+        ctx.restore();
+
+        // Drafting compass
+        ctx.save();
+        ctx.translate(78, 22);
+        ctx.rotate(t * 0.025);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.arc(0, 0, 7, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(10, 0);
+        ctx.rotate(t * 0.06);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(8, -8);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    renderElectricalAvatar(ctx, w, h, frame = 0) {
+        ctx.clearRect(0, 0, w, h);
+        const t = frame;
+
+        // Circuit board
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(25, 10, 62, 85);
+        ctx.strokeStyle = '#0ea5e9';
+        ctx.lineWidth = 1;
+
+        // Circuit paths
+        ctx.beginPath();
+        ctx.moveTo(30, 25);
+        ctx.lineTo(80, 25);
+        ctx.lineTo(80, 35);
+        ctx.lineTo(50, 35);
+        ctx.lineTo(50, 55);
+        ctx.lineTo(80, 55);
+        ctx.lineTo(80, 65);
+        ctx.lineTo(35, 65);
+        ctx.lineTo(35, 75);
+        ctx.lineTo(80, 75);
+        ctx.stroke();
+
+        // Animated current pulses
+        const pulses = 6;
+        for (let i = 0; i < pulses; i++) {
+            const progress = (t * 0.05 + i * 0.8) % 2;
+            const brightness = Math.sin(progress * Math.PI) * 0.5 + 0.5;
+            ctx.strokeStyle = `rgba(96, 165, 250, ${brightness})`;
+            ctx.lineWidth = 2;
+
+            let x, y;
+            if (progress < 1) {
+                x = 30 + progress * 50;
+                y = 25;
+            } else {
+                x = 80;
+                y = 25 + (progress - 1) * 10;
+            }
+
+            ctx.beginPath();
+            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Electronic components
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(35, 42, 12, 5);
+        ctx.fillRect(65, 42, 12, 5);
+
+        ctx.fillStyle = '#1e40af';
+        ctx.fillRect(50, 50, 10, 5);
+
+        // LED (pulsing)
+        ctx.fillStyle = Math.sin(t * 0.08) > 0 ? '#f59e0b' : '#92400e';
+        ctx.beginPath();
+        ctx.arc(52, 30, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Wire animation
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        const wireX = 45 + Math.cos(t * 0.08) * 12;
+        ctx.moveTo(wireX, 60);
+        ctx.lineTo(wireX, 68);
+        ctx.stroke();
+    }
+
+    renderMechanicalAvatar(ctx, w, h, frame = 0) {
+        ctx.clearRect(0, 0, w, h);
+        const t = frame;
+
+        // Draw gears
+        const gearData = [
+            { x: 35, y: 50, r: 12, teeth: 12, speed: 1, color: '#94a3b8' },
+            { x: 60, y: 45, r: 10, teeth: 10, speed: -1.2, color: '#cbd5e1' },
+            { x: 82, y: 55, r: 8, teeth: 8, speed: 1.5, color: '#64748b' },
+        ];
+
+        gearData.forEach((gear) => {
+            ctx.save();
+            ctx.translate(gear.x, gear.y);
+            ctx.rotate(t * 0.02 * gear.speed);
+
+            for (let j = 0; j < gear.teeth; j++) {
+                ctx.save();
+                ctx.rotate((j / gear.teeth) * Math.PI * 2);
+                ctx.fillStyle = gear.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -gear.r - 3);
+                ctx.lineTo(0, -gear.r - 7);
+                ctx.lineTo(0, -gear.r - 9);
+                ctx.arc(0, -gear.r - 8, 1.8, 0, Math.PI);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            ctx.fillStyle = '#475569';
+            ctx.beginPath();
+            ctx.arc(0, 0, gear.r * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            for (let j = 0; j < gear.teeth; j++) {
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(gear.r * 0.6, 0);
+                ctx.rotate((j / gear.teeth) * Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        });
+
+        // Wrench animation
+        ctx.save();
+        ctx.translate(85, 75);
+        ctx.rotate(Math.sin(t * 0.05) * 0.6);
+        ctx.fillStyle = '#d4d4d4';
+        ctx.fillRect(-3, -14, 6, 28);
+        ctx.fillRect(-10, -3, 26, 6);
+        ctx.restore();
+
+        // Machine base
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(15, 70, 82, 6);
+
+        // Pulley system
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(35, 70, 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(82, 70, 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(39, 70);
+        ctx.lineTo(78, 70);
+        ctx.stroke();
+    }
+
+    renderRoboticsAvatar(ctx, w, h, frame = 0) {
+        ctx.clearRect(0, 0, w, h);
+        const t = frame;
+
+        // Work surface
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(15, 70, 82, 5);
+
+        // Robot arm base
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.arc(50, 68, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Robot arm segments
+        const armAngle1 = Math.sin(t * 0.05 + 0.2) * 0.7;
+        const armAngle2 = Math.sin(t * 0.04 - 0.3) * 0.9;
+        const armAngle3 = Math.sin(t * 0.03 + 0.5) * 1.1;
+
+        ctx.save();
+        ctx.translate(50, 68);
+
+        // Segment 1
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, 20);
+        ctx.stroke();
+
+        // Joint 1
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.arc(0, 20, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Segment 2
+        ctx.translate(0, 20);
+        ctx.rotate(armAngle1);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, 22);
+        ctx.stroke();
+
+        // Joint 2
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.arc(0, 22, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Segment 3
+        ctx.translate(0, 22);
+        ctx.rotate(armAngle2);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, 20);
+        ctx.stroke();
+
+        // Gripper
+        ctx.translate(0, 20);
+        ctx.rotate(armAngle3);
+        const gripOpen = Math.abs(Math.sin(t * 0.04)) * 5;
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(-6, 0, 12, 4);
+        ctx.fillRect(-8, 0, 4, 8 + gripOpen);
+        ctx.fillRect(4, 0, 4, 8 + gripOpen);
+
+        ctx.restore();
+
+        // Robot body
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(38, 28, 24, 30);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(38, 28, 24, 30);
+
+        // Robot face
+        ctx.fillStyle = '#06b6d4';
+        ctx.beginPath();
+        ctx.arc(45, 40, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(55, 40, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // LED mouth display
+        ctx.fillStyle = Math.sin(t * 0.05) > 0 ? '#10b981' : '#064e35';
+        ctx.fillRect(42, 48, 16, 5);
+        ctx.strokeStyle = '#047857';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(42, 48, 16, 5);
+        ctx.fillStyle = '#0d9488';
+        ctx.font = '5px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('AI', 50, 52);
+    }
+
+    renderAIAvatar(ctx, w, h, frame = 0) {
+        ctx.clearRect(0, 0, w, h);
+        const t = frame;
+
+        // Neural network nodes
+        const nodeCount = 8;
+        const radius = 28;
+        const centerX = 50;
+        const centerY = 45;
+
+        // Draw connections
+        for (let i = 0; i < nodeCount; i++) {
+            const aX = centerX + Math.cos(i / nodeCount * Math.PI * 2) * radius;
+            const aY = centerY + Math.sin(i / nodeCount * Math.PI * 2) * radius;
+            for (let j = i + 1; j < nodeCount; j++) {
+                const bX = centerX + Math.cos(j / nodeCount * Math.PI * 2) * radius;
+                const bY = centerY + Math.sin(j / nodeCount * Math.PI * 2) * radius;
+
+                const alpha = Math.sin(t * 0.03 + i * 0.5 + j * 0.3) * 0.3 + 0.3;
+                ctx.strokeStyle = `rgba(167, 139, 255, ${alpha})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(aX, aY);
+                ctx.lineTo(bX, bY);
+                ctx.stroke();
+            }
+        }
+
+        // Draw data pulses along connections
+        for (let i = 0; i < nodeCount; i++) {
+            const next = (i + 1) % nodeCount;
+            const aX = centerX + Math.cos(i / nodeCount * Math.PI * 2) * radius;
+            const aY = centerY + Math.sin(i / nodeCount * Math.PI * 2) * radius;
+            const bX = centerX + Math.cos(next / nodeCount * Math.PI * 2) * radius;
+            const bY = centerY + Math.sin(next / nodeCount * Math.PI * 2) * radius;
+
+            const progress = (Math.sin(t * 0.08 + i * 0.7) + 1) / 2;
+            const px = aX + (bX - aX) * progress;
+            const py = aY + (bY - aY) * progress;
+
+            ctx.fillStyle = '#c4b5ff';
+            ctx.beginPath();
+            ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Draw neurons
+        for (let i = 0; i < nodeCount; i++) {
+            const x = centerX + Math.cos(i / nodeCount * Math.PI * 2) * radius;
+            const y = centerY + Math.sin(i / nodeCount * Math.PI * 2) * radius;
+
+            const pulseSize = 3 + Math.sin(t * 0.05 - i * 0.4) * 2;
+            ctx.strokeStyle = '#c4b5ff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(x, y, pulseSize, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = '#8b5cf6';
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Central processing unit
+        ctx.fillStyle = '#1e1b2e';
+        ctx.fillRect(35, 53, 30, 22);
+        ctx.strokeStyle = '#6d28d9';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(35, 53, 30, 22);
+
+        // CPU activity bars
+        const barCount = 5;
+        for (let i = 0; i < barCount; i++) {
+            const barHeight = Math.abs(Math.sin(t * 0.05 - i * 0.7)) * 16;
+            ctx.fillStyle = i % 2 === 0 ? '#8b5cf6' : '#a78bfa';
+            ctx.fillRect(37 + i * 6, 62 - barHeight, 4, barHeight);
+        }
+
+        // Binary data stream
+        ctx.fillStyle = '#a78bfa';
+        ctx.font = '5px monospace';
+        ctx.textAlign = 'center';
+        for (let i = 0; i < 5; i++) {
+            const bit = Math.floor(Math.sin(t * 0.2 + i) * 10) % 2;
+            ctx.fillText(bit === 0 ? '0' : '1', 37 + i * 6 + 2, 76);
+        }
+    }
+
+    renderMechatronicsAvatar(ctx, w, h, frame = 0) {
+        ctx.clearRect(0, 0, w, h);
+        const t = frame;
+
+        // Work surface
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(10, 75, 80, 5);
+
+        // Mechanical arm
+        ctx.save();
+        ctx.translate(40, 70);
+        ctx.rotate(Math.sin(t * 0.04) * 0.5);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(-2, -18, 4, 18);
+
+        // Joint
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.arc(0, -18, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sensor end-effector
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-5, -28, 10, 8);
+        ctx.strokeStyle = '#0ea5e9';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-5, -28, 10, 8);
+
+        // Sensor light
+        ctx.fillStyle = Math.sin(t * 0.12) > 0 ? '#06b6d4' : '#0ea5e9';
+        ctx.beginPath();
+        ctx.arc(0, -24, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        // Circuit traces on base
+        ctx.strokeStyle = '#0ea5e9';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(20, 68);
+        ctx.lineTo(50, 68);
+        ctx.lineTo(50, 70);
+        ctx.lineTo(78, 70);
+        ctx.stroke();
+
+        // Data flow dots
+        for (let i = 0; i < 5; i++) {
+            const progress = (t * 0.05 + i * 0.6) % 2;
+            if (progress < 0.5) {
+                ctx.fillStyle = '#38bdf8';
+                const x = 22 + (progress / 0.5) * 28;
+                ctx.beginPath();
+                ctx.arc(x, 68, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Microcontroller
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(62, 52, 24, 16);
+        ctx.strokeStyle = '#0ea5e9';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(62, 52, 24, 16);
+        ctx.fillStyle = '#0ea5e9';
+        ctx.font = '5px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('MCU', 74, 59);
+
+        // MCU pins
+        ctx.fillStyle = '#d4d4d4';
+        for (let i = 0; i < 8; i++) {
+            ctx.beginPath();
+            ctx.arc(66 + (i % 2) * 14, 54 + Math.floor(i / 2) * 4, 1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    /* ===== EVENT LISTENERS ===== */
 
     setupEventListeners() {
         const submitBtn = document.getElementById('submitRequest');
         const requestInput = document.getElementById('requestInput');
-        
+
         submitBtn?.addEventListener('click', () => {
             const request = requestInput?.value.trim();
             if (request) {
@@ -830,7 +902,7 @@ class VirtualOffice {
                 requestInput.value = '';
             }
         });
-        
+
         requestInput?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 const request = e.target.value.trim();
@@ -842,6 +914,8 @@ class VirtualOffice {
         });
     }
 
+    /* ===== REQUEST ROUTING ===== */
+
     submitRequest(requestText) {
         const dept = this.routeRequest(requestText);
         this.showRequestFlow(requestText, dept);
@@ -849,135 +923,112 @@ class VirtualOffice {
     }
 
     routeRequest(requestText) {
-        // CEO routes requests based on keyword scoring
         const lowerText = requestText.toLowerCase();
-        
         let bestDept = 'planner';
         let bestScore = 0;
-        
-        const deptPriority = ['ai', 'robotics', 'mechatronics', 'structural', 'electrical',
-                              'mechanical', 'backend', 'frontend', 'planner'];
-        
-        for (const deptId of deptPriority) {
+
+        for (const deptId of this.deptPriority) {
             const dept = this.departments[deptId];
             if (!dept) continue;
-            
+
             let score = 0;
             for (const workType of dept.workTypes) {
-                // Split workType into tokens (handle hyphenated terms)
                 const tokens = workType.replace(/[-_]/g, ' ').split(' ');
                 const matched = tokens.every(token => {
-                    // Skip very short tokens
                     if (token.length < 3) return false;
-                    // Match with word boundary, allowing optional plural 's'
                     const regex = new RegExp(`\\b${token}s?\\b`, 'i');
                     return regex.test(lowerText);
                 });
                 if (matched && tokens.length > 0) {
-                    score += 2; // Full workType match
+                    score += 2;
                 }
             }
-            
+
             if (score > bestScore) {
                 bestScore = score;
                 bestDept = deptId;
             }
         }
-        
+
         return bestDept;
     }
 
-    showRequestFlow(requestText, dept) {
-        const flowContainer = document.getElementById('requestFlow');
-        if (!flowContainer) return;
-        
-        const card = document.createElement('div');
-        card.className = 'request-card';
-        card.textContent = requestText.substring(0, 60) + '...';
-        flowContainer.appendChild(card);
-        
-        // Animate routing status
-        setTimeout(() => {
-            card.classList.add('routed');
-            card.title = `Routed to: ${this.departments[dept]?.name || 'Planner'}`;
-        }, 1000);
-        
-        setTimeout(() => {
-            card.classList.add('processing');
-        }, 2000);
-        
-        setTimeout(() => {
-            card.classList.add('completed');
-        }, 5000);
-        
-        setTimeout(() => {
-            if (card.parentNode) {
-                flowContainer.removeChild(card);
-            }
-        }, 8000);
-    }
+    /* ===== WORK SIMULATION ===== */
 
     assignTask(deptId, taskText) {
         const dept = this.departments[deptId];
-        if (!dept) return;
-        
+        if (!dept || dept.status === 'busy') return;
+
         dept.status = 'busy';
         dept.currentTask = taskText;
         dept.progress = 0;
-        
+        this.pendingTasks++;
+
         this.updateDeptUI(deptId);
         this.updateStats();
-        
-        // Simulate task completion
-        const duration = Math.random() * 3000 + 2000;
+
+        // Simulate task duration based on department work speed
+        const baseDuration = 3000 + Math.random() * 4000;
+        const duration = baseDuration / (dept.workSpeed * 50);
         const startTime = Date.now();
-        
+
         const taskInterval = setInterval(() => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min((elapsed / duration) * 100, 100);
             dept.progress = progress;
-            
             this.updateProgress(deptId, progress);
-            
+
             if (progress >= 100) {
                 clearInterval(taskInterval);
                 dept.status = 'completed';
-                dept.currentTask = `Completed: ${taskText.substring(0, 30)}...`;
+                dept.currentTask = 'Completed!';
                 dept.progress = 100;
-                
                 this.completedTasks++;
                 this.pendingTasks = Math.max(0, this.pendingTasks - 1);
-                
-                setTimeout(() => {
-                    dept.status = 'idle';
-                    dept.currentTask = 'Idle';
-                    dept.progress = 0;
-                    this.updateProgress(deptId, 0);
-                    this.updateDeptUI(deptId);
-                    this.updateStats();
-                }, 2000);
-                
                 this.updateStats();
+
+                this.updateDeptUI(deptId);
+
+                setTimeout(() => {
+                    if (dept.status === 'completed') {
+                        dept.status = 'idle';
+                        dept.currentTask = 'Idle';
+                        dept.progress = 0;
+                        this.updateProgress(deptId, 0);
+                        this.updateDeptUI(deptId);
+                        this.updateStats();
+                    }
+                }, 2000);
             }
-        }, 100);
+        }, 50);
     }
+
+    /* ===== UI UPDATES ===== */
 
     updateDeptUI(deptId) {
         const dept = this.departments[deptId];
+        if (!dept) return;
+
         const statusEl = document.getElementById(`${deptId}Status`);
         const taskEl = document.getElementById(`${deptId}Task`);
-        
+        const wrapper = document.getElementById(`${deptId}Wrapper`);
+
         if (statusEl) {
             statusEl.className = 'dept-status-indicator';
             statusEl.classList.add(dept.status);
         }
-        
+
         if (taskEl) {
             taskEl.textContent = dept.currentTask;
             taskEl.className = 'dept-task';
             if (dept.status === 'busy' || dept.status === 'completed') {
                 taskEl.classList.add('busy');
             }
+        }
+
+        if (wrapper) {
+            wrapper.className = 'avatar-canvas-wrapper';
+            wrapper.classList.add(dept.status);
         }
     }
 
@@ -989,59 +1040,71 @@ class VirtualOffice {
     }
 
     updateStats() {
-        // Count active (non-idle) departments
-        const activeCount = Object.values(this.departments).filter(
-            d => d.status !== 'idle'
-        ).length;
-        const busyCount = Object.values(this.departments).filter(
-            d => d.status === 'busy'
-        ).length;
-        
+        const activeCount = Object.values(this.departments).filter(d => d.status !== 'idle').length;
+        const busyCount = Object.values(this.departments).filter(d => d.status === 'busy').length;
+
         const activeEl = document.getElementById('activeDeptsCount');
         const busyEl = document.getElementById('busyDeptsCount');
         const completedEl = document.getElementById('completedTasksCount');
         const pendingEl = document.getElementById('pendingTasksCount');
-        
+
         if (activeEl) activeEl.textContent = `${activeCount}/9 Active`;
         if (busyEl) busyEl.textContent = `${busyCount} Busy`;
         if (completedEl) completedEl.textContent = `${this.completedTasks} Completed`;
         if (pendingEl) pendingEl.textContent = `${this.pendingTasks} Pending`;
     }
 
-    capitalize(str) {
-        return str.charAt(0).toUpperCase() + str.slice(1);
+    showRequestFlow(requestText, dept) {
+        const flowContainer = document.getElementById('requestFlow');
+        if (!flowContainer) return;
+
+        const card = document.createElement('div');
+        card.className = 'request-card';
+        card.textContent = requestText.substring(0, 80);
+        card.title = requestText;
+        flowContainer.appendChild(card);
+
+        // Position right or left alternately
+        const cards = flowContainer.children;
+        if (cards.length % 2 === 0) {
+            card.classList.add('request-flow-right');
+        } else {
+            card.classList.add('request-flow-left');
+        }
+
+        setTimeout(() => card.classList.add('show'), 50);
+
+        setTimeout(() => card.classList.add('routed'), 1000);
+        setTimeout(() => card.classList.add('processing'), 2000);
+        setTimeout(() => card.classList.add('completed'), 5000);
+
+        setTimeout(() => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(20px)';
+            setTimeout(() => {
+                if (card.parentNode) flowContainer.removeChild(card);
+            }, 500);
+        }, 8000);
     }
 
     startSimulation() {
-        // Simulate autonomous work - each department starts idle
-        // The planner periodically distributes tasks
-        
-        // Start with some initial activity
-        setTimeout(() => {
-            this.assignTask('backend', 'Building API endpoints for user service');
-        }, 500);
-        
-        setTimeout(() => {
-            this.assignTask('ai', 'Training recommendation model v2');
-        }, 1000);
-        
-        setTimeout(() => {
-            this.assignTask('mechanical', 'Designing gear assembly for drone');
-        }, 3000);
-        
-        setTimeout(() => {
-            this.assignTask('planner', 'Optimizing resource allocation matrix');
-        }, 4000);
-        
+        // Initial task assignments
+        setTimeout(() => this.assignTask('backend', 'Building API endpoints for user service'), 500);
+        setTimeout(() => this.assignTask('ai', 'Training recommendation model v2'), 1000);
+        setTimeout(() => this.assignTask('mechanical', 'Designing gear assembly for drone'), 2000);
+        setTimeout(() => this.assignTask('planner', 'Optimizing resource allocation matrix'), 3000);
+        setTimeout(() => this.assignTask('robotics', 'Assembling robotic arm prototype'), 2500);
+        setTimeout(() => this.assignTask('electrical', 'Wiring control panel circuits'), 1500);
+
         // Periodic autonomous task generation
         setInterval(() => {
             if (Math.random() > 0.7) {
-                const deptIds = Object.keys(this.departments).filter(d => d !== 'planner');
+                const deptIds = Object.keys(this.departments).filter(d => d !== 'planner' && d !== 'backend' && d !== 'ai');
                 const randomDept = deptIds[Math.floor(Math.random() * deptIds.length)];
                 const tasks = [
                     'Analyzing system performance metrics',
                     'Running diagnostics on subsystem',
-                    'Processing data pipeline jobs',
+                    'Processing pipeline jobs',
                     'Compiling and deploying code',
                     'Running simulation tests'
                 ];
@@ -1049,35 +1112,26 @@ class VirtualOffice {
                 this.assignTask(randomDept, randomTask);
             }
         }, 8000);
-        
+
         // Planner optimization cycle
         setInterval(() => {
             if (Math.random() > 0.5) {
                 this.assignTask('planner', 'Running weekly resource optimization');
             }
         }, 15000);
-        
+
         // Update stats periodically
-        setInterval(() => {
-            this.updateStats();
-        }, 1000);
+        setInterval(() => this.updateStats(), 1000);
     }
 }
 
-// ===== Initialize when DOM is loaded =====
+/* ===== Initialize on DOM load ===== */
 document.addEventListener('DOMContentLoaded', () => {
     const office = new VirtualOffice();
-    
-    // Simulate request routing demo
-    setTimeout(() => {
-        office.submitRequest('Build a React dashboard for the AI model metrics');
-    }, 6000);
-    
-    setTimeout(() => {
-        office.submitRequest('Design structural supports for rooftop installation');
-    }, 12000);
-    
-    setTimeout(() => {
-        office.submitRequest('Optimize neural network inference pipeline');
-    }, 18000);
+
+    // Auto-dispatch demo requests
+    setTimeout(() => office.submitRequest('Build a React dashboard for the AI model metrics'), 6000);
+    setTimeout(() => office.submitRequest('Design structural supports for rooftop installation'), 12000);
+    setTimeout(() => office.submitRequest('Optimize neural network inference pipeline'), 18000);
 });
+
