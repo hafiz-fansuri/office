@@ -774,6 +774,10 @@ body::before {
         display: none;
     }
     
+    .backend-status {
+        display: none;
+    }
+    
     .request-inbox {
         max-width: none;
     }
@@ -837,4 +841,95 @@ body::before {
 .floor-grid canvas {
     width: 100%;
     height: 100%;
+}
+
+/* ===== Backend Status Indicator ===== */
+.backend-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 6px var(--space-md);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-primary);
+    border-radius: 20px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--color-text-tertiary);
+    transition: all var(--anim-duration-normal) var(--anim-ease-standard);
+    white-space: nowrap;
+}
+
+.backend-status.connected {
+    color: var(--color-completed);
+    border-color: var(--color-completed);
+    background: rgba(74, 222, 128, 0.1);
+}
+
+.backend-status.disconnected {
+    color: var(--color-error);
+    border-color: var(--color-error);
+    background: rgba(248, 113, 113, 0.1);
+}
+
+.backend-status.connecting i {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+/* ===== Request Card (Backend-Driven) ===== */
+.request-text {
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: 2px;
+}
+
+.request-status {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+}
+
+.request-model-badge {
+    font-size: 10px;
+    color: var(--color-text-tertiary);
+    background: rgba(30, 30, 50, 0.6);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-family: var(--font-mono);
+}
+
+.request-card.result-visible .request-text {
+    color: var(--color-text-primary);
+}
+
+.request-result {
+    margin-top: var(--space-xs);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+    white-space: pre-wrap;
+    line-height: 1.4;
+}
+
+/* ===== AI Result Display on Department Cards ===== */
+.dept-result {
+    margin-top: var(--space-xs);
+    padding: 0 var(--space-sm);
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: all var(--anim-duration-normal) var(--anim-ease-standard);
+}
+
+.dept-result.visible {
+    max-height: 300px;
+    opacity: 1;
+}
+
+.result-content {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
 }

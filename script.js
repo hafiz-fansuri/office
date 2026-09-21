@@ -12,6 +12,15 @@ class VirtualOffice {
         this.isInitialized = false;
         this.avatarAnimations = {};
 
+        // ─── AI Backend Integration ───
+        this.backendUrl = document.querySelector('meta[name="backend-url"]')?.content || 'http://localhost:8000';
+        this.ws = null;
+        this.wsConnected = false;
+        this.pendingRequests = new Map();        // request_id → task text
+        this.requestCards = new Map();            // request_id → DOM card element
+        this.deptActiveTasks = new Map();         // deptId → { request_id, task }
+        this.aiResults = new Map();               // deptId → AI result text
+
         this.init();
     }
 
@@ -20,9 +29,217 @@ class VirtualOffice {
         this.initAvatars();
         this.setupEventListeners();
         this.initFloorGrid();
+        this.initBackend();
         this.startSimulation();
         this.isInitialized = true;
         console.log('[Virtual Office] OmniTech Engineering — System Initialized');
+    }
+
+    /* ===== AI BACKEND INTEGRATION ===== */
+
+    initBackend() {
+        const wsUrl = this.backendUrl.replace(/^http/, 'ws');
+        console.log(`[Backend] Connecting to ${wsUrl}/ws`);
+
+        this.ws = new WebSocket(`${wsUrl}/ws`);
+
+        this.ws.onopen = () => {
+            this.wsConnected = true;
+            console.log('[Backend] WebSocket connected');
+            this.updateBackendStatus(true);
+        };
+
+        this.ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                this.handleBackendEvent(data);
+            } catch (e) {
+                console.error('[Backend] Failed to parse event:', e);
+            }
+        };
+
+        this.ws.onclose = () => {
+            this.wsConnected = false;
+            console.log('[Backend] WebSocket disconnected');
+            this.updateBackendStatus(false);
+            // Reconnect after 3 seconds
+            setTimeout(() => this.initBackend(), 3000);
+        };
+
+        this.ws.onerror = (err) => {
+            console.error('[Backend] WebSocket error:', err);
+        };
+    }
+
+    updateBackendStatus(connected) {
+        const indicator = document.getElementById('backendStatus');
+        if (indicator) {
+            indicator.textContent = connected ? 'Backend Connected' : 'Backend Disconnected';
+            indicator.style.color = connected ? '#4ade80' : '#f97316';
+        }
+    }
+
+    async handleBackendEvent(event) {
+        const { type, request_id, department, task, result, error, priority, model, provider } = event;
+
+        switch (type) {
+            case 'request_received':
+                this.onBackendRequestReceived(event);
+                break;
+            case 'task_routed':
+                this.onBackendTaskRouted(event);
+                break;
+            case 'task_status':
+                this.onBackendTaskStatus(event);
+                break;
+            case 'task_completed':
+                this.onBackendTaskCompleted(event);
+                break;
+            case 'task_error':
+                this.onBackendTaskError(event);
+                break;
+        }
+    }
+
+    onBackendRequestReceived(event) {
+        const card = this.requestCards.get(event.request_id);
+        if (card) {
+            card.classList.add('processing');
+            card.querySelector('.request-status').textContent = 'Routing to department...';
+        }
+    }
+
+    onBackendTaskRouted(event) {
+        const { request_id, department, task, priority, model, provider } = event;
+        this.deptActiveTasks.set(department, { request_id, task });
+
+        const dept = this.departments[department];
+        if (dept) {
+            dept.status = 'busy';
+            dept.currentTask = task || 'Processing with AI...';
+            this.updateDeptUI(department);
+            this.updateStats();
+        }
+
+        const card = this.requestCards.get(request_id);
+        if (card) {
+            card.classList.add('processing');
+            const statusEl = card.querySelector('.request-status');
+            if (statusEl) statusEl.textContent = `Routed to ${dept?.name || department}`;
+
+            const modelBadge = card.querySelector('.request-model-badge');
+            if (modelBadge) {
+                modelBadge.textContent = `${provider}/${model}`;
+            }
+        }
+    }
+
+    onBackendTaskStatus(event) {
+        const { request_id, department, status } = event;
+        const dept = this.departments[department];
+        if (dept && status === 'processing') {
+            dept.status = 'busy';
+            dept.currentTask = 'AI processing...';
+            this.updateDeptUI(department);
+        }
+    }
+
+    onBackendTaskCompleted(event) {
+        const { request_id, department, task, result } = event;
+
+        const dept = this.departments[department];
+        if (dept) {
+            dept.status = 'completed';
+            dept.currentTask = 'Completed!';
+            this.completedTasks++;
+            this.pendingTasks = Math.max(0, this.pendingTasks - 1);
+            this.updateDeptUI(department);
+            this.updateStats();
+
+            // Display AI result on the department card
+            this.displayAIResult(department, result);
+        }
+
+        // Update request flow card
+        const card = this.requestCards.get(request_id);
+        if (card) {
+            card.classList.remove('processing');
+            card.classList.add('completed');
+            const statusEl = card.querySelector('.request-status');
+            if (statusEl) statusEl.textContent = 'Completed';
+            card.classList.add('result-visible');
+        }
+
+        // Clean up
+        this.deptActiveTasks.delete(department);
+        this.pendingRequests.delete(request_id);
+
+        // Reset department to idle after a delay
+        setTimeout(() => {
+            if (dept && dept.status === 'completed') {
+                dept.status = 'idle';
+                dept.currentTask = 'Idle';
+                dept.progress = 0;
+                this.updateDeptUI(department);
+                this.updateStats();
+                this.hideAIResult(department);
+            }
+        }, 8000);
+    }
+
+    onBackendTaskError(event) {
+        const { request_id, department, error } = event;
+
+        const dept = this.departments[department];
+        if (dept) {
+            dept.status = 'idle';
+            dept.currentTask = 'Error (see log)';
+            this.pendingTasks = Math.max(0, this.pendingTasks - 1);
+            this.updateDeptUI(department);
+            this.updateStats();
+        }
+
+        const card = this.requestCards.get(request_id);
+        if (card) {
+            card.classList.remove('processing');
+            const statusEl = card.querySelector('.request-status');
+            if (statusEl) statusEl.textContent = `Error: ${error || 'Unknown error'}`;
+        }
+
+        this.deptActiveTasks.delete(department);
+        this.pendingRequests.delete(request_id);
+    }
+
+    displayAIResult(deptId, result) {
+        let resultEl = document.getElementById(`${deptId}Result`);
+        if (!resultEl) {
+            const taskInfo = document.querySelector(`[data-dept="${deptId}"] .dept-task-info`);
+            if (taskInfo) {
+                resultEl = document.createElement('div');
+                resultEl.id = `${deptId}Result`;
+                resultEl.className = 'dept-result';
+                taskInfo.parentNode.insertBefore(resultEl, taskInfo.nextSibling);
+            }
+        }
+        if (resultEl) {
+            resultEl.innerHTML = `<div class="result-content">${this.escapeHtml(result)}</div>`;
+            resultEl.style.display = 'block';
+            setTimeout(() => resultEl.classList.add('visible'), 50);
+        }
+    }
+
+    hideAIResult(deptId) {
+        const resultEl = document.getElementById(`${deptId}Result`);
+        if (resultEl) {
+            resultEl.classList.remove('visible');
+            setTimeout(() => { resultEl.style.display = 'none'; }, 300);
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     setupDepartments() {
@@ -916,10 +1133,71 @@ class VirtualOffice {
 
     /* ===== REQUEST ROUTING ===== */
 
-    submitRequest(requestText) {
-        const dept = this.routeRequest(requestText);
-        this.showRequestFlow(requestText, dept);
-        this.assignTask(dept, requestText);
+    async submitRequest(requestText) {
+        if (this.wsConnected) {
+            // Send to backend AI team
+            this.pendingRequests.set(requestText, true);
+            const card = this.addRequestCard(requestText, 'routing');
+
+            try {
+                const response = await fetch(`${this.backendUrl}/api/request`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ request: requestText })
+                });
+                const data = await response.json();
+                this.pendingRequests.set(data.request_id, requestText);
+                this.requestCards.set(data.request_id, card);
+            } catch (e) {
+                console.error('[Backend] Submit failed:', e);
+                // Fallback to local routing
+                const dept = this.routeRequest(requestText);
+                this.showRequestFlow(requestText, dept);
+                this.assignTask(dept, requestText);
+            }
+        } else {
+            // Fallback: local routing (no backend connection)
+            const dept = this.routeRequest(requestText);
+            this.showRequestFlow(requestText, dept);
+            this.assignTask(dept, requestText);
+        }
+    }
+
+    addRequestCard(requestText, status) {
+        const flowContainer = document.getElementById('requestFlow');
+        if (!flowContainer) return null;
+
+        const card = document.createElement('div');
+        card.className = 'request-card';
+        card.title = requestText;
+
+        const textEl = document.createElement('div');
+        textEl.className = 'request-text';
+        textEl.textContent = requestText.substring(0, 80);
+        card.appendChild(textEl);
+
+        const statusEl = document.createElement('div');
+        statusEl.className = 'request-status';
+        statusEl.textContent = status === 'routing' ? 'Routing...' : status;
+        card.appendChild(statusEl);
+
+        const modelBadge = document.createElement('div');
+        modelBadge.className = 'request-model-badge';
+        modelBadge.textContent = 'AI Team';
+        card.appendChild(modelBadge);
+
+        flowContainer.appendChild(card);
+
+        // Position right or left alternately
+        const cards = flowContainer.children;
+        if (cards.length % 2 === 0) {
+            card.classList.add('request-flow-right');
+        } else {
+            card.classList.add('request-flow-left');
+        }
+
+        setTimeout(() => card.classList.add('show'), 50);
+        return card;
     }
 
     routeRequest(requestText) {

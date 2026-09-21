@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Office — OmniTech Engineering</title>
     <meta name="description" content="OmniTech Engineering Virtual Office - Dashboard with autonomous avatars">
+    <meta name="backend-url" content="http://localhost:8000">
     <link rel="stylesheet" href="style.css">
     <link rel="preload" href="script.js" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -59,6 +60,11 @@
                     <i class="fas fa-clock stat-icon"></i>
                     <span id="pendingTasksCount">8 Pending</span>
                 </div>
+            </div>
+
+            <!-- Backend Status Indicator -->
+            <div class="backend-status" id="backendStatus">
+                <i class="fas fa-wifi"></i> Backend Connecting...
             </div>
         </header>
 
